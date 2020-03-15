@@ -22,18 +22,24 @@ public class CharacterController2D : MonoBehaviour
     [SerializeField] private float crawlSpeed = 0f;          // Amount of maxSpeed applied to crouching movement. 1 = 100%
 
     [Header("Jump parameters")]
-    [SerializeField] private float jumpSpeed = 7;
+    [SerializeField] private float jumpSpeed = 7f;
     [SerializeField] private float jumpHeight = 1.5f;
-    [SerializeField] private float shortHopHeight = 0.5f;
-    [SerializeField] private float maxFallSpeed = 4;
+    [SerializeField] private float downAcceleration = 13f;
+    [Space]
+    [SerializeField] private float maxFallSpeed = 4f;
     [Range(0, 1)][SerializeField] private float fastFallMultiplier = 0.6f;
-    [SerializeField] private float downAcceleration = 13;
-    [SerializeField] private float forceStopAcceleration;
-    [SerializeField] private float shortHopTimeLimit;
     private float airTime;
-    private float ascendingAcceleration;
     private float fastFallSpeed;
-    private bool shortHop;
+    [Header("Double Jump parameters")]
+    [SerializeField] private float dJumpSpeed = 7f;
+    [SerializeField] private float dJumpHeight = 0.9f;
+    [SerializeField] private float dDownAcceleration = 13f;
+    [Space]
+    [SerializeField] private int defaultAirHops= 1;
+    [Header("Short Hop parameters")]
+    [SerializeField] private float shortHopSpeed = 3;
+    [SerializeField] private float shortHopHeight = 0.5f;
+    [SerializeField] private float shortHopDownAccel = 10f;
 
     [Header("Events")]
     [Space]
@@ -46,8 +52,17 @@ public class CharacterController2D : MonoBehaviour
     public BoolEvent OnCrouchEvent;
     private bool m_wasCrouching = false;
     private float verticalSpeed;
+    private int airHops;
+    struct JumpMode
+    {
+        public float ascendingAcceleration;
+        public float downAcceleration;
+    }
 
-
+    private JumpMode currentJump;
+    private JumpMode normalJump;
+    private JumpMode doubleJump;
+    private JumpMode shortHopJump;
 
     private void Awake()
     {
@@ -57,8 +72,19 @@ public class CharacterController2D : MonoBehaviour
 
         if (OnCrouchEvent == null)
             OnCrouchEvent = new BoolEvent();
-        ascendingAcceleration = jumpSpeed * jumpSpeed / (2 * jumpHeight);
+        JumpSetup();
+        fastFall = false;
         fastFallSpeed = maxFallSpeed * (1 + fastFallMultiplier);
+    }
+
+    private void JumpSetup()
+    {
+        normalJump.ascendingAcceleration = jumpSpeed * jumpSpeed / (2 * jumpHeight);
+        normalJump.downAcceleration = downAcceleration;
+        doubleJump.ascendingAcceleration = dJumpSpeed * dJumpSpeed / (2 * dJumpHeight);
+        doubleJump.downAcceleration = dDownAcceleration;
+        shortHopJump.ascendingAcceleration = shortHopSpeed * shortHopSpeed / (2 * shortHopHeight);
+        shortHopJump.downAcceleration = shortHopDownAccel;
     }
 
     private void Update()
@@ -83,14 +109,14 @@ public class CharacterController2D : MonoBehaviour
         }
     }
 
-    private void verticalMovement(bool jumpReleased, float vertical)
+    private void VerticalMovement(bool jumpReleased, bool inputFastFall)
     {
         if (!m_Grounded)
         {
             airTime += Time.deltaTime;
             if (verticalSpeed > 0)
             {
-                verticalSpeed -= ascendingAcceleration * Time.deltaTime;
+                verticalSpeed -= currentJump.ascendingAcceleration * Time.deltaTime;
                 RaycastHit2D hitCeil = Physics2D.Raycast(m_CeilingCheck.position, Vector2.up);
                 if (hitCeil.collider != null && hitCeil.distance < Mathf.Abs(verticalSpeed * Time.deltaTime) + 0.1f)
                 {
@@ -100,7 +126,7 @@ public class CharacterController2D : MonoBehaviour
             }
             else
             {
-                verticalSpeed -= downAcceleration * Time.deltaTime;
+                verticalSpeed -= currentJump.downAcceleration * Time.deltaTime;
                 RaycastHit2D hitFloor = Physics2D.Raycast(m_GroundCheck.position, Vector2.down);
                 if (hitFloor.collider != null && hitFloor.distance < Mathf.Abs(verticalSpeed * Time.deltaTime) + 0.1f)
                 {
@@ -109,7 +135,7 @@ public class CharacterController2D : MonoBehaviour
                     m_Grounded = true;
                 }
             }
-            if (vertical < -0.5)
+            if (inputFastFall)
                 fastFall = true;
             if (!fastFall &&  verticalSpeed <= -maxFallSpeed)
             {
@@ -122,10 +148,10 @@ public class CharacterController2D : MonoBehaviour
         }
     }
 
-    public void Move(float move, bool crouch, bool jump, float vertical, bool jumpReleased, bool shortHop)
+    public void Move(float move, bool crouch, bool jump, float vertical, bool jumpReleased, bool shortHop, bool fastFall)
     {
         // If crouching, check to see if the character can stand up
-        verticalMovement(jumpReleased, vertical);
+        VerticalMovement(jumpReleased, fastFall);
         if (!crouch)
         {
             // If the character has a ceiling preventing them from standing up, keep them crouching
@@ -192,17 +218,39 @@ public class CharacterController2D : MonoBehaviour
         {
             transform.Translate(new Vector3(move * airSpeed * Time.deltaTime, verticalSpeed * Time.deltaTime));
         }
+        selectJump(jump, shortHop);
+        
+    }
 
+    private void selectJump(bool jump, bool shortHop)
+    {
+        if (!m_Grounded && jump && airHops > 0)
+        {
+            print("Hello");
+            airHops--;
+            fastFall = false;
+            verticalSpeed = dJumpSpeed;
+            currentJump = doubleJump;
+        }
         if (m_Grounded && jump)
         {
+            airHops = defaultAirHops;
             airTime = 0;
-            shortHop = false;
             m_Grounded = false;
             fastFall = false;
             verticalSpeed = jumpSpeed;
+            currentJump = normalJump;
+        }
+        if (m_Grounded && shortHop)
+        {
+            airHops = defaultAirHops;
+            airTime = 0;
+            m_Grounded = false;
+            fastFall = false;
+            verticalSpeed = shortHopSpeed;
+            currentJump = shortHopJump;
         }
     }
-
 
     private void Flip()
     {
