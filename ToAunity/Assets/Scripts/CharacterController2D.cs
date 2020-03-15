@@ -118,7 +118,7 @@ public class CharacterController2D : MonoBehaviour
             {
                 verticalSpeed -= currentJump.ascendingAcceleration * Time.deltaTime;
                 RaycastHit2D hitCeil = Physics2D.Raycast(m_CeilingCheck.position, Vector2.up);
-                if (hitCeil.collider != null && hitCeil.distance < Mathf.Abs(verticalSpeed * Time.deltaTime) + 0.1f)
+                if (hitCeil.collider != null && hitCeil.distance < Mathf.Abs(verticalSpeed * Time.deltaTime) + 0.01f)
                 {
                     transform.Translate(new Vector3(0, hitCeil.distance));
                     verticalSpeed = 0;
@@ -128,7 +128,7 @@ public class CharacterController2D : MonoBehaviour
             {
                 verticalSpeed -= currentJump.downAcceleration * Time.deltaTime;
                 RaycastHit2D hitFloor = Physics2D.Raycast(m_GroundCheck.position, Vector2.down);
-                if (hitFloor.collider != null && hitFloor.distance < Mathf.Abs(verticalSpeed * Time.deltaTime) + 0.1f)
+                if (hitFloor.collider != null && hitFloor.distance < Mathf.Abs(verticalSpeed * Time.deltaTime) + 0.01f)
                 {
                     transform.Translate(new Vector3(0, -hitFloor.distance));
                     verticalSpeed = 0;
@@ -226,7 +226,6 @@ public class CharacterController2D : MonoBehaviour
     {
         if (!m_Grounded && jump && airHops > 0)
         {
-            print("Hello");
             airHops--;
             fastFall = false;
             verticalSpeed = dJumpSpeed;
