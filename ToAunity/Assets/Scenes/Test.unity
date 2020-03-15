@@ -433,17 +433,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9ce6045b3fb39040a68f3b77efa45d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_WhatIsGround:
+    serializedVersion: 2
+    m_Bits: 0
   m_GroundCheck: {fileID: 1524277029}
   m_CeilingCheck: {fileID: 1317946784}
+  m_CrouchDisableCollider: {fileID: 0}
   runSpeed: 6
   airSpeed: 3.5
+  crawlSpeed: 0
   jumpSpeed: 7
   jumpHeight: 1.5
+  downAcceleration: 13
   maxFallSpeed: 4
-  fastFallSpeed: 8
-  descendingAccelerationMultiplier: 0.8
-  forceStopAcceleration: 0
-  shortHopTimeLimit: 0
+  fastFallMultiplier: 0.6
+  dJumpSpeed: 7
+  dJumpHeight: 0.9
+  dDownAcceleration: 13
+  defaultAirHops: 1
+  shortHopSpeed: 3
+  shortHopHeight: 0.5
+  shortHopDownAccel: 10
   OnLandEvent:
     m_PersistentCalls:
       m_Calls: []
