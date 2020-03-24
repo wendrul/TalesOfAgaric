@@ -16,10 +16,11 @@ public class PlayerMovementInputs : MonoBehaviour
     private bool fastFall;
     private bool verticalReleased;
     private float deadZone;
-
+    private Animator animator;
     void Start()
     {
         character = GetComponent<CharacterController2D>();
+        animator = GetComponent<Animator>();
         jumpReleased = true;
         verticalReleased = true;
     }
@@ -51,6 +52,8 @@ public class PlayerMovementInputs : MonoBehaviour
             crouch = true;
         else
             crouch = false;
+        if (Input.GetKeyDown("j"))
+            animator.SetTrigger("Dtilt");
 
         character.Move(move, crouch, jump, vertical, jumpReleased, shortHop, fastFall);
         
