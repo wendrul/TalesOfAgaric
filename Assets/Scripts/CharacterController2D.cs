@@ -19,7 +19,11 @@ public class CharacterController2D : MonoBehaviour
     [Header("lateral movement")]
     [SerializeField] private float runSpeed = 6;
     [SerializeField] private float airSpeed = 3.5f;
-    [SerializeField] private float crawlSpeed = 0f;          // Amount of maxSpeed applied to crouching movement. 1 = 100%
+    [SerializeField] private float crawlSpeed = 0f;
+    [Space]
+    [SerializeField] private float groundAcceleration;
+    [SerializeField] private float groundDeceleration;
+    [SerializeField] private float airAcceleration;
 
     [Header("Jump parameters")]
     [SerializeField] private float jumpSpeed = 7f;
@@ -64,6 +68,9 @@ public class CharacterController2D : MonoBehaviour
     private JumpMode doubleJump;
     private JumpMode shortHopJump;
 
+    private Animator animator;
+    private float horizontalSpeed;
+
     private void Awake()
     {
         verticalSpeed = 0f;
@@ -75,6 +82,11 @@ public class CharacterController2D : MonoBehaviour
         JumpSetup();
         fastFall = false;
         fastFallSpeed = maxFallSpeed * (1 + fastFallMultiplier);
+    }
+
+    private void Start()
+    {
+        animator = GetComponent<Animator>();
     }
 
     private void JumpSetup()
@@ -89,9 +101,6 @@ public class CharacterController2D : MonoBehaviour
 
     private void Update()
     {
-        //ascendingAcceleration = jumpSpeed * jumpSpeed / (2 * jumpHeight);
-        //remove line above after debug
-
         bool wasGrounded = m_Grounded;
         m_Grounded = false;
 
@@ -109,6 +118,91 @@ public class CharacterController2D : MonoBehaviour
         }
     }
 
+    public void Move(float move, bool crouch, bool jump, float vertical, bool jumpReleased, bool shortHop, bool fastFall)
+    {
+        animator.SetBool("isWalking", false);
+        VerticalMovement(jumpReleased, fastFall);
+        CrouchUpdate(crouch);
+        if (m_Grounded)
+        {
+            if (move > 0 && !m_FacingRight)
+            {
+                Flip();
+            }
+            else if (move < 0 && m_FacingRight)
+            {
+                Flip();
+            }
+
+            if (Mathf.Abs(move) > 0)
+            {
+                animator.SetBool("isWalking", true);
+                horizontalSpeed += Mathf.Sign(move) * groundAcceleration * Time.deltaTime;
+            }
+            else
+            {
+                if (Mathf.Abs(horizontalSpeed) < groundDeceleration * Time.deltaTime + 0.01f)
+                {
+                    horizontalSpeed = 0;
+                }
+                if (horizontalSpeed != 0)
+                    horizontalSpeed -= Mathf.Sign(horizontalSpeed) * groundDeceleration * Time.deltaTime;
+            }
+            if (crouch && Mathf.Abs(horizontalSpeed) > crawlSpeed)
+                horizontalSpeed = Mathf.Sign(horizontalSpeed) * crawlSpeed;
+            if (!crouch && Mathf.Abs(horizontalSpeed) > runSpeed)
+                horizontalSpeed = Mathf.Sign(horizontalSpeed) * runSpeed;
+        }
+        else
+        {
+            if (Mathf.Abs(move) > 0)
+            {
+                horizontalSpeed += Mathf.Sign(move) * airAcceleration * Time.deltaTime;
+            }
+            else
+            {
+                if (Mathf.Abs(horizontalSpeed) < airAcceleration * Time.deltaTime + 0.01f)
+                {
+                    horizontalSpeed = 0;
+                }
+                horizontalSpeed -= Mathf.Sign(horizontalSpeed) * airAcceleration * Time.deltaTime;
+            }
+            if (Mathf.Abs(horizontalSpeed) > airSpeed)
+                horizontalSpeed = Mathf.Sign(horizontalSpeed) * airSpeed;
+        }
+        transform.Translate(new Vector3(horizontalSpeed * Time.deltaTime, verticalSpeed * Time.deltaTime));
+        SelectJump(jump, shortHop);
+        
+    }
+
+    private void SelectJump(bool jump, bool shortHop)
+    {
+        if (!m_Grounded && jump && airHops > 0)
+        {
+            airHops--;
+            fastFall = false;
+            verticalSpeed = dJumpSpeed;
+            currentJump = doubleJump;
+        }
+        if (m_Grounded && jump)
+        {
+            airHops = defaultAirHops;
+            airTime = 0;
+            m_Grounded = false;
+            fastFall = false;
+            verticalSpeed = jumpSpeed;
+            currentJump = normalJump;
+        }
+        if (m_Grounded && shortHop)
+        {
+            airHops = defaultAirHops;
+            airTime = 0;
+            m_Grounded = false;
+            fastFall = false;
+            verticalSpeed = shortHopSpeed;
+            currentJump = shortHopJump;
+        }
+    }
     private void VerticalMovement(bool jumpReleased, bool inputFastFall)
     {
         if (!m_Grounded)
@@ -137,9 +231,9 @@ public class CharacterController2D : MonoBehaviour
             }
             if (inputFastFall)
                 fastFall = true;
-            if (!fastFall &&  verticalSpeed <= -maxFallSpeed)
+            if (!fastFall && verticalSpeed <= -maxFallSpeed)
             {
-                    verticalSpeed = -maxFallSpeed;
+                verticalSpeed = -maxFallSpeed;
             }
             if (fastFall && verticalSpeed < 0)
             {
@@ -147,11 +241,8 @@ public class CharacterController2D : MonoBehaviour
             }
         }
     }
-
-    public void Move(float move, bool crouch, bool jump, float vertical, bool jumpReleased, bool shortHop, bool fastFall)
+    private void CrouchUpdate(bool crouch)
     {
-        // If crouching, check to see if the character can stand up
-        VerticalMovement(jumpReleased, fastFall);
         if (!crouch)
         {
             // If the character has a ceiling preventing them from standing up, keep them crouching
@@ -160,12 +251,8 @@ public class CharacterController2D : MonoBehaviour
             //    crouch = true;
             //}
         }
-
-        //only control the player if grounded or airControl is turned on
         if (m_Grounded)
         {
-
-            // If crouching
             if (crouch)
             {
                 if (!m_wasCrouching)
@@ -192,65 +279,8 @@ public class CharacterController2D : MonoBehaviour
                     OnCrouchEvent.Invoke(false);
                 }
             }
-            // If the input is moving the player right and the player is facing left...
-            if (move > 0 && !m_FacingRight)
-            {
-                // ... flip the player.
-                Flip();
-            }
-            // Otherwise if the input is moving the player left and the player is facing right...
-            else if (move < 0 && m_FacingRight)
-            {
-                // ... flip the player.
-                Flip();
-            }
-            //move the character horizontally
-            if (!crouch)
-            {
-                transform.Translate(new Vector3(move * runSpeed * Time.deltaTime, verticalSpeed * Time.deltaTime));
-            }
-            else
-            {
-                transform.Translate(new Vector3(move * crawlSpeed * Time.deltaTime, verticalSpeed * Time.deltaTime));
-            }
-        }
-        else
-        {
-            transform.Translate(new Vector3(move * airSpeed * Time.deltaTime, verticalSpeed * Time.deltaTime));
-        }
-        selectJump(jump, shortHop);
-        
-    }
-
-    private void selectJump(bool jump, bool shortHop)
-    {
-        if (!m_Grounded && jump && airHops > 0)
-        {
-            airHops--;
-            fastFall = false;
-            verticalSpeed = dJumpSpeed;
-            currentJump = doubleJump;
-        }
-        if (m_Grounded && jump)
-        {
-            airHops = defaultAirHops;
-            airTime = 0;
-            m_Grounded = false;
-            fastFall = false;
-            verticalSpeed = jumpSpeed;
-            currentJump = normalJump;
-        }
-        if (m_Grounded && shortHop)
-        {
-            airHops = defaultAirHops;
-            airTime = 0;
-            m_Grounded = false;
-            fastFall = false;
-            verticalSpeed = shortHopSpeed;
-            currentJump = shortHopJump;
         }
     }
-
     private void Flip()
     {
         // Switch the way the player is labelled as facing.
