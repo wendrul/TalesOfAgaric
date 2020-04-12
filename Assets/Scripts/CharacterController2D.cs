@@ -174,7 +174,6 @@ public class CharacterController2D : MonoBehaviour
         SelectJump(jump, shortHop);
         
     }
-
     private void SelectJump(bool jump, bool shortHop)
     {
         if (!m_Grounded && jump && airHops > 0)
