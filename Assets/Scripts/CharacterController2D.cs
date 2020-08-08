@@ -16,6 +16,8 @@ public class CharacterController2D : MonoBehaviour
 
     private bool fastFall;
 
+    public float RunSpeed { get; private set; }
+
     [Header("lateral movement")]
     [SerializeField] private float runSpeed = 6;
     [SerializeField] private float airSpeed = 3.5f;
@@ -290,4 +292,5 @@ public class CharacterController2D : MonoBehaviour
         theScale.x *= -1;
         transform.localScale = theScale;
     }
+
 }
